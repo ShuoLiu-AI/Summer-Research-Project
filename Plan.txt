@@ -1,0 +1,4 @@
+1)practice 1: thermal simulation in ABAQUS with 2D single high-abosorbing mineral particle surrounded by a low-abosorbing material
+2)practice 2: EM field modelling and convertion the filed to thermal field
+3)investigation: EM field modelling and thermal simulation based on many 3D multi-particles 
+4)investigation: EM field modelling and thermal simulation on face aborbing of rock mass, to simulate the insite senarior when assisting a tunneling
