@@ -5,7 +5,7 @@
 from abaqus import *
 from abaqusConstants import *
 import __main__
-
+ 
 class parts:
     dim = 2
     shape = 'cube'
@@ -45,16 +45,18 @@ def Macro1():
     import connectorBehavior
 
 
+    assem_name = 'square-3d-macro'
+
     #define the geometric shape size and location
     calcite_dim = 2
     pyrite_dim = 0.5
 
     #this import the calcite into the assembly
-    assembly = mdb.models['square-3d-macro'].rootAssembly
-    calcite = mdb.models['square-3d-macro'].parts['calcite']
+    assembly = mdb.models[assem_name].rootAssembly
+    calcite = mdb.models[assem_name].parts['calcite']
     assembly.Instance(name='calcite-1', part=calcite, dependent=ON)
 
-    pyrite = mdb.models['square-3d-macro'].parts['pyrite']
+    pyrite = mdb.models[assem_name].parts['pyrite']
 
     parts pyrite1('pyrite-1', pyrite, assembly, 0.5, 'cube')
     parts pyrite2('pyrite-2', pyrite, assembly, 0.5, 'cube')
@@ -70,8 +72,14 @@ def Macro1():
         keepIntersections=ON, originalInstances=SUPPRESS, domain=GEOMETRY)
 
 
-    merged = mdb.models['']
-    p.SectionAssignment(region=region, sectionName='calcite', offset=0.0, 
+    merged_part = mdb.models[assem_name].parts['merged']
+    calcite_cell = merged.cells.findAt(((0, 0, 0),))
+    region = regionToolset.Region(cells = calcite_cell)
+
+    merged_part.SectionAssignment(region=region, sectionName='calcite', offset=0.0, 
         offsetType=MIDDLE_SURFACE, offsetField='', 
         thicknessAssignment=FROM_SECTION)
     
+    session.viewports['Viewport: 1'].setValues(displayedObject=assembly)
+    session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=ON, bcs=ON, 
+        predefinedFields=ON, connectors=ON)
