@@ -13,7 +13,7 @@ class parts:
     assembly = ''
 
     def __init__(self, name, part, assembly,  dim, shape):
-        assembly.Instance(name=name, part=part, dependent=ON)
+        self.part = assembly.Instance(name=name, part=part, dependent=ON)
         self.assembly = assembly
         self.name = name
         self.dim = dim
@@ -21,6 +21,8 @@ class parts:
 
     def translate(self, vec):
         self.assembly.translate(instanceList=(self.name), vector=vec)
+    def part(self):
+        return self.part
 
 
 def Macro1():
@@ -66,3 +68,10 @@ def Macro1():
         assembly.instances['calcite-1'], assembly.instances['pyrite-1'], 
         assembly.instances['pyrite-2'], assembly.instances['pyrite-3'], ), 
         keepIntersections=ON, originalInstances=SUPPRESS, domain=GEOMETRY)
+
+
+    merged = mdb.models['']
+    p.SectionAssignment(region=region, sectionName='calcite', offset=0.0, 
+        offsetType=MIDDLE_SURFACE, offsetField='', 
+        thicknessAssignment=FROM_SECTION)
+    
