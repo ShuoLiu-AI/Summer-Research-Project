@@ -4,7 +4,7 @@ from abaqus import *
 from abaqusConstants import *
 import __main__
 
-def create_path():
+def rotate():
     import section
     import regionToolset
     import displayGroupMdbToolset as dgm
@@ -22,11 +22,18 @@ def create_path():
     import xyPlot
     import displayGroupOdbToolset as dgo
     import connectorBehavior
-    session.Path(name='Path-1', type=POINT_LIST, expression=((4.875, 
-        -4.98750019073486, 0.125), (4.995, -4.98750019073486, 0.125)))
+    session.viewports['Viewport: 1'].view.setValues(nearPlane=11.5562, 
+        farPlane=17.5367, width=0.944521, height=0.461161, viewOffsetX=1.27177, 
+        viewOffsetY=-2.35087)
+    a = mdb.models['square-3d'].rootAssembly
+    a.rotate(instanceList=('Part-2-1', 'Part-3-1', 'merge-1'), axisPoint=(4.875, 
+        -4.875, 0.125), axisDirection=(10.0, 0.0, 0.0), angle=90.0)
+    a = mdb.models['square-3d'].rootAssembly
+    a.rotate(instanceList=('Part-2-1', 'Part-3-1', 'merge-1'), axisPoint=(4.9375, 
+        -4.75, 0.125), axisDirection=(0.0, -0.125, 0.0), angle=90.0)
 
 
-def run_macro():
+def delete():
     import section
     import regionToolset
     import displayGroupMdbToolset as dgm
@@ -44,12 +51,13 @@ def run_macro():
     import xyPlot
     import displayGroupOdbToolset as dgo
     import connectorBehavior
-    execfile(
-        '//ad.monash.edu/home/User045/dche145/Documents/Abaqus/macros/master_macro.py', 
-        __main__.__dict__)
+    a = mdb.models['square-3d-macro-start-origin'].rootAssembly
+    a.deleteFeatures(('merged-1', 'pyrite-0', 'pyrite-1', 'pyrite-2', 'pyrite-3', 
+        'pyrite-4', 'pyrite-5', 'pyrite-6', 'pyrite-7', 'pyrite-8', 'pyrite-9', 
+        'calcite-1', ))
 
 
-def get_to_session():
+def regen():
     import section
     import regionToolset
     import displayGroupMdbToolset as dgm
@@ -67,21 +75,7 @@ def get_to_session():
     import xyPlot
     import displayGroupOdbToolset as dgo
     import connectorBehavior
-    session.mdbData.summary()
-    session.viewports['Viewport: 1'].setValues(
-        displayedObject=session.odbs['C:/Users/dche145/AppData/Local/Temp/17/heatflux_108.odb'])
-    odb = session.odbs['C:/Users/dche145/AppData/Local/Temp/17/heatflux_108.odb']
-    session.viewports['Viewport: 1'].setValues(displayedObject=odb)
-    xyp = session.XYPlot('XYPlot-1')
-    chartName = xyp.charts.keys()[0]
-    chart = xyp.charts[chartName]
-    pth = session.paths['Path-1']
-    xy1 = xyPlot.XYDataFromPath(path=pth, includeIntersections=False, 
-        projectOntoMesh=False, pathStyle=UNIFORM_SPACING, numIntervals=10, 
-        projectionTolerance=0, shape=DEFORMED, labelType=TRUE_DISTANCE, 
-        removeDuplicateXYPairs=True, includeAllElements=False)
-    c1 = session.Curve(xyData=xy1)
-    chart.setValues(curvesToPlot=(c1, ), )
-    session.viewports['Viewport: 1'].setValues(displayedObject=xyp)
+    a = mdb.models['square-3d-macro-start-origin'].rootAssembly
+    a.regenerate()
 
 
