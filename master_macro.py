@@ -34,36 +34,90 @@ import unicodedata
 
 working_dir = r'//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/'
 sys.path.append(working_dir)
-os.chdir(working_dir)
-from helpers import matmul, get_rx, get_ry, get_rz, get_name_job
+# os.chdir(working_dir)
+import helpers
+reload(helpers)
+from helpers import matmul, matmul_vec, get_rx, get_ry, get_rz, get_name_job
 
 
-class parts:
-    dim = 2
-    shape = 'cube'
-    name = ''
-    assembly = ''
-    def __init__(self, name, part, assembly,  dim, shape):
-        self.part = assembly.Instance(name=name, part=part, dependent=ON)
+pyrite_part = None
+calcite_part = None
+pyrite_ins = []
+calcite_ins = []
+part_name_file = working_dir + 'part_names.peter'
+geo_distro_3D = working_dir + 'geometry.peter'
+part_name_list = []
+
+class part:
+    def __init__(self, name, dim=[0.5, 0.5, 0.5], center=[0, 0, 0], shape='cube', b_create_part=False, assembly=assembly):
         self.assembly = assembly
         self.name = name
         self.dim = dim
+        self.center = center
         self.shape = shape
-    def translate(self, vec):
-        self.assembly.translate(instanceList=(self.name,), vector=vec)
-    def rotate(self):
-        raise Exception('not implemented')
+        self.axis = [[self.dim[0], 0, 0], [0, self.dim[0], 0], [0, 0, self.dim[0]]]
+        if self.shape == 'cube':
+            s = mdb.models['square-3d-macro-start-origin'].ConstrainedSketch(
+                name='__profile__', sheetSize=200.0)
+            g, v, d, c = s.geometry, s.vertices, s.dimensions, s.constraints
+            s.setPrimaryObject(option=STANDALONE)
+            two_corner = ((-self.dim[0]/2+self.center[0], self.dim[1]/2+self.center[1]),
+                (self.dim[0]/2 + self.center[0], -self.dim[1]/2 + self.center[1]))
+            self.center[2] = self.dim[2]/2
+            s.rectangle(point1=two_corner[0], point2=two_corner[1])
+            p = mdb.models['square-3d-macro-start-origin'].Part(name=self.name,
+                dimensionality=THREE_D, type=DEFORMABLE_BODY)
+            p.BaseSolidExtrude(sketch=s, depth=self.dim[2])
+            self.abq_part=p
+            del mdb.models['square-3d-macro-start-origin'].sketches['__profile__']
 
-assem_name = 'square-3d-macro-start-origin'
-assembly = mdb.models[assem_name].rootAssembly
-pyrite_parts = []
-calcite_parts = []
-part_name_file = 'part_names.peter'
-part_name_list = []
+
+class instance:
+    def __init__(self, name, abq_part = None, script_part = None, center=(0,0,0)):
+        self.name=name
+        if abq_part is not None:
+            self.part = assembly.Instance(name=name, part=abq_part, dependent=ON)
+            self.axis = [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]]
+        elif script_part is not None:
+            self.part = assembly.Instance(name=name, part=script_part.abq_part, dependent=ON)
+            self.axis = script_part.axis
+            self.translate((np.array(center) - np.array(script_part.center)).tolist())
+        else:
+            raise Exception('have to give one of the part')
+    def translate(self, vec):
+        assembly.translate(instanceList=(self.name,), vector=vec)
+    def rotate(self, theta):
+        rx = get_rx(theta[0])
+        ry = get_ry(theta[1])
+        rz = get_rz(theta[2])
+        self.axis_temp = [[0,0,1] for i in range(3)]
+
+        assembly.rotate(instanceList=(self.name,), axisPoint=[0,0,0],
+        axisDirection=self.axis[0], angle=theta[0]*180/np.pi)
+        self.axis_temp[1] = matmul_vec(rx, matmul_vec(ry, self.axis[1]))
+        assembly.rotate(instanceList=(self.name,), axisPoint=[0,0,0],
+        axisDirection=self.axis_temp[1], angle=theta[1]*180/np.pi)
+        self.axis_temp[2] = matmul_vec(rx, matmul_vec(ry, matmul_vec(rz, self.axis[2])))
+        assembly.rotate(instanceList=(self.name,), axisPoint=[0,0,0],
+        axisDirection=self.axis_temp[2], angle=theta[2]*180/np.pi)
+
+        # for i in range(3):
+        #     self.axis_temp[i] = matmul_vec(rx, matmul_vec(ry, matmul_vec(rz, self.axis[i])))
+        #     assembly.DatumPointByCoordinate(self.axis_temp[i])
+        # if clean_up_geo_test:
+        #     del assembly.features['ax_0']
+        #     del assembly.features['ax_1']
+        #     del assembly.features['ax_2']
+        # assembly.features.changeKey(
+        #     fromName='Datum pt-1', toName='ax_0')
+        # assembly.features.changeKey(
+        #     fromName='Datum pt-2', toName='ax_1')
+        # assembly.features.changeKey(
+        #     fromName='Datum pt-3', toName='ax_2')
+
 
 def import_3D_geo_shape(num):
-    clean_up = True
-    if clean_up:
+    if clean_up_geo_test:
         with open(part_name_file) as f:
             part_name_list_read = json.load(f)
             for i in range(len(part_name_list_read)):
@@ -71,25 +125,28 @@ def import_3D_geo_shape(num):
                 'NFKD', part_name_list_read[i]).encode('ascii','ignore')
         assembly.deleteFeatures(part_name_list_read)
     #define the geometric shape size and location
-    calcite_dim = 2
-    pyrite_dim = 0.5
-    #this import the calcite into the assembly
-    calcite = mdb.models[assem_name].parts['calcite']
-    pyrite = mdb.models[assem_name].parts['pyrite']
-    global pyrite_parts
-    global calcite_parts
+    calcite_dim = [2.4, 2.4, 2.4]
+    pyrite_dim = [0.2, 0.2, 0.2]
+
+    global pyrite_part
+    global calcite_part
+    global pyrite_ins
+    global calcite_ins
+    calcite_part = part('calcite', dim=calcite_dim, center=[0,0,0])
+    pyrite_part = part('pyrite', dim=pyrite_dim, center=[0,0,0])
+
     for i in range(num):
-        pyrite_parts.append(parts('pyrite-'+str(i), pyrite, assembly, 0.5, 'cube'))
+        pyrite_ins.append(instance('pyrite-'+str(i), script_part=pyrite_part))
         part_name_list.append('pyrite-'+str(i))
-    calcite_parts.append(parts('calcite-1', calcite, assembly, 2, 'cube'))
+    calcite_ins.append(instance('calcite-1', script_part=calcite_part))
     part_name_list.append('calcite-1')
     with open(part_name_file, 'w') as f:
         json.dump(part_name_list, f)
 
 def create_3D_distro(num_crystal):
     #copy .\geometry.peter \\ad.monash.edu\home\User045\dche145\Documents\Abaqus\microwave-break-rocks\geometry.peter
-    file_name = 'geometry.peter'
-    with open(file_name, 'rb') as f:
+    geo_distro_3D = 'geometry.peter'
+    with open(geo_distro_3D, 'rb') as f:
         read_out = json.load(f)
         loc = np.array(read_out[0])
         Rx = np.array(read_out[1])
@@ -100,51 +157,25 @@ def create_3D_distro(num_crystal):
         theta_z = np.array(read_out[6])
 
 
-    axis_dir_x = [[1, 0, 0] for i in range(num_crystal)]
-    axis_dir_y = [[0, 1, 0] for i in range(num_crystal)]
-    axis_dir_z = [[0, 0, 1] for i in range(num_crystal)]
-
     for i in range(num_crystal):
-        pyrite_parts[i].translate([0, 0, -pyrite_parts[i].dim/2])
-        #translate the crystals to the origin
-    calcite_parts[0].translate([0, 0, -calcite_parts[0].dim/2])
-
-    for i in range(num_crystal):
-        #rotate the crystals
-        rx = get_rx(theta_x[i])
-        ry = get_ry(theta_y[i])
-        rz = get_rz(theta_z[i])
-        assembly.rotate(instanceList=('pyrite-'+str(i),), axisPoint=[0,0,0],
-        axisDirection=axis_dir_x[i], angle=theta_x[i]*180/np.pi)
-        axis_dir_x[i] = matmul(rx, axis_dir_x[i])
-        axis_dir_y[i] = matmul(rx, axis_dir_y[i])
-        axis_dir_z[i] = matmul(rx, axis_dir_z[i])
-        assembly.rotate(instanceList=('pyrite-'+str(i),), axisPoint=[0,0,0],
-        axisDirection=axis_dir_y[i], angle=theta_y[i]*180/np.pi)
-        axis_dir_x[i] = matmul(ry, axis_dir_x[i])
-        axis_dir_y[i] = matmul(ry, axis_dir_y[i])
-        axis_dir_z[i] = matmul(ry, axis_dir_z[i])
-        assembly.rotate(instanceList=('pyrite-'+str(i),), axisPoint=[0,0,0],
-        axisDirection=axis_dir_z[i], angle=theta_z[i]*180/np.pi)
-        axis_dir_x[i] = matmul(rz, axis_dir_x[i])
-        axis_dir_y[i] = matmul(rz, axis_dir_y[i])
-        axis_dir_z[i] = matmul(rz, axis_dir_z[i])
-
-    for i in range(num_crystal):
-        #translate the crystals to the desired location
-        pyrite_parts[i].translate(loc[i])
-
+        pyrite_ins[i].rotate([theta_x[i],theta_y[i], theta_z[i]])
+        pyrite_ins[i].translate(loc[i])
+        pass
 
 def merge_and_material():
     all_parts = []
     for i in range(num_crystal):
-        all_parts.append(pyrite_parts[i].part)
-    all_parts.append(calcite_parts[0].part)
+        all_parts.append(pyrite_ins[i].part)
+    all_parts.append(calcite_ins[0].part)
 
-    assembly.InstanceFromBooleanMerge(name='merged', instances=all_parts,
+    assembly.InstanceFromBooleanMerge(name='merged-1', instances=all_parts,
         keepIntersections=ON, originalInstances=SUPPRESS, domain=GEOMETRY)
-
-    merged_part = mdb.models[assem_name].parts['merged']
+    with open(part_name_file, 'r') as f:
+        part_name_list_read = json.load(f)
+        part_name_list_read.append('merged-1')
+    with open(part_name_file, 'w') as f:
+        json.dump(part_name_list_read, f)
+    merged_part = mdb.models[assem_name].parts['merged-1']
     calcite_cell = merged_part.cells.findAt(((0, 0, 0),))
     region = regionToolset.Region(cells = calcite_cell)
 
@@ -179,15 +210,18 @@ def run_job(magnitude=10e8, timePeriod=5, increment=0.3):
         sleep(0.1)
     return name_job
 
-def get_output_data(name_job, step, frame):
+def get_output_data(name_job, step, frame, meta_data = None):
     file_path = name_job +'.odb'
     odb = session.openOdb(name=file_path)
     # odb = session.odbs[file_path]
     session.viewports['Viewport: 1'].setValues(displayedObject=odb)
 #getting the output data from the model
-    session.Path(name='Path-1', type=POINT_LIST, expression=((4.875,
-        -4.98750019073486, 0.125), (4.995, -4.98750019073486, 0.125)))
-    pth = session.paths['Path-1']
+    session.Path(name='Path-diagonal', type=POINT_LIST, expression=((0.0299999993294477,0.0299999993294477,0.0),
+    (-0.0299999993294477,-0.0299999993294477,0.0)))
+    session.Path(name='Path-horizontal', type=POINT_LIST, expression=((0.0299999993294477,0.0299999993294477,0.0),
+    (-0.0299999993294477,-0.0299999993294477,0.0)))
+    pth_dia = session.paths['Path-diagonal']
+    pth_hor = session.paths['Path-horizontal']
 
     xy_data = [[] for i in range(step)]
     xy_data_name = ''
@@ -203,33 +237,59 @@ def get_output_data(name_job, step, frame):
             else:
                 xy_data_name_str += xy_data_name
 
-            session.XYDataFromPath(name=xy_data_name, path=pth, includeIntersections=False,
-                projectOntoMesh=False, pathStyle=UNIFORM_SPACING, numIntervals=60,
+            num_intervals = 150
+            session.XYDataFromPath(name=xy_data_name, path=pth_dia, includeIntersections=False,
+                projectOntoMesh=False, pathStyle=UNIFORM_SPACING, numIntervals=num_intervals,
                 projectionTolerance=0, shape=UNDEFORMED, labelType=TRUE_DISTANCE,
                 removeDuplicateXYPairs=True, includeAllElements=False)
             xy_data[i].append(session.xyDataObjects[xy_data_name].data)
 
-    with open(r'\\ad.monash.edu\home\User045\dche145\Documents\Abaqus\macros\saved_data'+name_job, 'wb') as f:
+    meta_data['step'] = step
+    meta_data['frame'] = frame
+    meta_data['num_intervals'] = num_intervals
+
+    global new_session
+
+    if new_session:
+        new_session=False
+        mode = 'wb'
+    else:
+        mode = 'ab'
+
+    with open(working_dir + 'saved_data', mode) as f:
+        pickle.dump(meta_data, f)
         pickle.dump(xy_data, f)
 
 
+
 if __name__== "__main__":
-    num_change_flux = 10
+    # assem_name = 'square-3d-macro-start-origin'
+    assem_name = 'square-3d'
+
+    assembly = mdb.models[assem_name].rootAssembly
+    num_change_flux = 25
     magnitude = np.linspace(10e6, 10e10, num_change_flux)
-    timePeriod=5
-    increment=0.3
+    timePeriod=10.0
+    increment=0.2
     step = 1
     frame = int(np.ceil(timePeriod/increment))
     num_crystal = 10
+    new_session = True
+    clean_up_geo_test = False
+    # import_3D_geo_shape(num_crystal)
+    # create_3D_distro(num_crystal)
+    # merge_and_material()
 
-    import_3D_geo_shape(num_crystal)
-    create_3D_distro(num_crystal)
-    merge_and_material()
 
-    # for i in xrange(num_change_flux):
-    #     name_job = run_job(magnitude[i], timePeriod, increment)
-    #     get_output_data(name_job, step, frame)
-    #
+    for i in xrange(num_change_flux):
+        timePeriod -= 6.0/num_change_flux
+        name_job = run_job(magnitude[i], timePeriod, increment)
+        meta_data = {
+            'name': name_job,
+            'magnitude': magnitude[i],
+        }
+        get_output_data(name_job, step, frame, meta_data)
+
     # How to copy Macro
     # shutil.copyfile('C:/Users/dche145/abaqusMacros.py', r'//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/macro.py')
     # execfile('//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/master_macro.py', __main__.__dict__)
