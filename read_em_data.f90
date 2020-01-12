@@ -67,7 +67,7 @@ PROGRAM H5_CRTDAT
   !
   ! Initialize FORTRAN interface.
   !
-  CALL h5open_f(error)
+  CALL h5open_ f(error)
   !
   ! Create a new file using default properties.
   !

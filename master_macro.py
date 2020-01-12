@@ -206,45 +206,41 @@ def run_job(magnitude=10e8, timePeriod=5, increment=0.3):
     job = mdb.jobs[name_job]
     job.submit(consistencyChecking=OFF)
     job.waitForCompletion()
-    while os.path.isfile(name_job+'.023') or os.path.isfile(name_job+'.lck') == True:
-        sleep(0.1)
+    # while os.path.isfile(name_job+'.023') or os.path.isfile(name_job+'.lck') == True:
+    #     sleep(0.1)
+    shutil.copyfile(name_job+'.odb', working_dir+'data_base'+'/'+name_job+'.odb')
     return name_job
 
-def get_output_data(name_job, step, frame, meta_data = None):
+def get_output_data(name_job, step, frame, num_intervals, meta_data = None):
     file_path = name_job +'.odb'
     odb = session.openOdb(name=file_path)
     # odb = session.odbs[file_path]
     session.viewports['Viewport: 1'].setValues(displayedObject=odb)
-#getting the output data from the model
+    #getting the output data from the model
     session.Path(name='Path-diagonal', type=POINT_LIST, expression=((0.0299999993294477,0.0299999993294477,0.0),
     (-0.0299999993294477,-0.0299999993294477,0.0)))
-    session.Path(name='Path-horizontal', type=POINT_LIST, expression=((0.0299999993294477,0.0299999993294477,0.0),
-    (-0.0299999993294477,-0.0299999993294477,0.0)))
     pth_dia = session.paths['Path-diagonal']
-    pth_hor = session.paths['Path-horizontal']
 
-    xy_data = [[] for i in range(step)]
+    xy_data = [[] for i in range(frame)]
     xy_data_name = ''
     xy_data_name_str = ''
 
-    for i in xrange(step):
-        for j in xrange(frame):
-            session.viewports['Viewport: 1'].odbDisplay.setFrame(step=i, frame=j)
-            xy_data_name = name_job + 'stress'+str(i)+'_'+str(j)
 
-            if i is not step-1 or j is not frame-1:
-                xy_data_name_str += xy_data_name +','
-            else:
-                xy_data_name_str += xy_data_name
+    for i in xrange(frame):
+        session.viewports['Viewport: 1'].odbDisplay.setFrame(step=0, frame=i)
+        xy_data_name = name_job + 'stress' + str(i)
 
-            num_intervals = 150
-            session.XYDataFromPath(name=xy_data_name, path=pth_dia, includeIntersections=False,
-                projectOntoMesh=False, pathStyle=UNIFORM_SPACING, numIntervals=num_intervals,
-                projectionTolerance=0, shape=UNDEFORMED, labelType=TRUE_DISTANCE,
-                removeDuplicateXYPairs=True, includeAllElements=False)
-            xy_data[i].append(session.xyDataObjects[xy_data_name].data)
+        if i is not frame-1:
+            xy_data_name_str += xy_data_name +','
+        else:
+            xy_data_name_str += xy_data_name
 
-    meta_data['step'] = step
+        session.XYDataFromPath(name=xy_data_name, path=pth_dia, includeIntersections=False,
+            projectOntoMesh=False, pathStyle=UNIFORM_SPACING, numIntervals=num_intervals,
+            projectionTolerance=0, shape=UNDEFORMED, labelType=TRUE_DISTANCE,
+            removeDuplicateXYPairs=True, includeAllElements=False)
+        xy_data[i] = session.xyDataObjects[xy_data_name].data
+
     meta_data['frame'] = frame
     meta_data['num_intervals'] = num_intervals
 
@@ -266,13 +262,16 @@ if __name__== "__main__":
     # assem_name = 'square-3d-macro-start-origin'
     assem_name = 'square-3d'
 
-    assembly = mdb.models[assem_name].rootAssembly
+    model = mdb.models[assem_name]
+    assembly = model.rootAssembly
     num_change_flux = 25
-    magnitude = np.linspace(10e6, 10e10, num_change_flux)
-    timePeriod=10.0
-    increment=0.2
-    step = 1
+    magnitude = np.linspace(10, 500, num_change_flux)
+    timePeriod=50.0
+    increment=0.5
     frame = int(np.ceil(timePeriod/increment))
+    num_intervals = 150
+
+    step = 1
     num_crystal = 10
     new_session = True
     clean_up_geo_test = False
@@ -282,13 +281,12 @@ if __name__== "__main__":
 
 
     for i in xrange(num_change_flux):
-        timePeriod -= 6.0/num_change_flux
         name_job = run_job(magnitude[i], timePeriod, increment)
         meta_data = {
             'name': name_job,
             'magnitude': magnitude[i],
         }
-        get_output_data(name_job, step, frame, meta_data)
+        get_output_data(name_job, step, frame, num_intervals, meta_data)
 
     # How to copy Macro
     # shutil.copyfile('C:/Users/dche145/abaqusMacros.py', r'//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/macro.py')
