@@ -32,89 +32,15 @@ import sys
 import shutil
 import unicodedata
 
-working_dir = r'//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/'
+# working_dir = r'//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/'
+working_dir = r'C:/peter_abaqus/Summer-Research-Project/'
 sys.path.append(working_dir)
 # os.chdir(working_dir)
 import helpers
+from mat_prop import *
+from global_var import *
 reload(helpers)
-from helpers import matmul, matmul_vec, get_rx, get_ry, get_rz, get_name_job
-
-
-pyrite_part = None
-calcite_part = None
-pyrite_ins = []
-calcite_ins = []
-part_name_file = working_dir + 'part_names.peter'
-geo_distro_3D = working_dir + 'geometry.peter'
-part_name_list = []
-
-class part:
-    def __init__(self, name, dim=[0.5, 0.5, 0.5], center=[0, 0, 0], shape='cube', b_create_part=False, assembly=assembly):
-        self.assembly = assembly
-        self.name = name
-        self.dim = dim
-        self.center = center
-        self.shape = shape
-        self.axis = [[self.dim[0], 0, 0], [0, self.dim[0], 0], [0, 0, self.dim[0]]]
-        if self.shape == 'cube':
-            s = mdb.models['square-3d-macro-start-origin'].ConstrainedSketch(
-                name='__profile__', sheetSize=200.0)
-            g, v, d, c = s.geometry, s.vertices, s.dimensions, s.constraints
-            s.setPrimaryObject(option=STANDALONE)
-            two_corner = ((-self.dim[0]/2+self.center[0], self.dim[1]/2+self.center[1]),
-                (self.dim[0]/2 + self.center[0], -self.dim[1]/2 + self.center[1]))
-            self.center[2] = self.dim[2]/2
-            s.rectangle(point1=two_corner[0], point2=two_corner[1])
-            p = mdb.models['square-3d-macro-start-origin'].Part(name=self.name,
-                dimensionality=THREE_D, type=DEFORMABLE_BODY)
-            p.BaseSolidExtrude(sketch=s, depth=self.dim[2])
-            self.abq_part=p
-            del mdb.models['square-3d-macro-start-origin'].sketches['__profile__']
-
-
-class instance:
-    def __init__(self, name, abq_part = None, script_part = None, center=(0,0,0)):
-        self.name=name
-        if abq_part is not None:
-            self.part = assembly.Instance(name=name, part=abq_part, dependent=ON)
-            self.axis = [[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]]
-        elif script_part is not None:
-            self.part = assembly.Instance(name=name, part=script_part.abq_part, dependent=ON)
-            self.axis = script_part.axis
-            self.translate((np.array(center) - np.array(script_part.center)).tolist())
-        else:
-            raise Exception('have to give one of the part')
-    def translate(self, vec):
-        assembly.translate(instanceList=(self.name,), vector=vec)
-    def rotate(self, theta):
-        rx = get_rx(theta[0])
-        ry = get_ry(theta[1])
-        rz = get_rz(theta[2])
-        self.axis_temp = [[0,0,1] for i in range(3)]
-
-        assembly.rotate(instanceList=(self.name,), axisPoint=[0,0,0],
-        axisDirection=self.axis[0], angle=theta[0]*180/np.pi)
-        self.axis_temp[1] = matmul_vec(rx, matmul_vec(ry, self.axis[1]))
-        assembly.rotate(instanceList=(self.name,), axisPoint=[0,0,0],
-        axisDirection=self.axis_temp[1], angle=theta[1]*180/np.pi)
-        self.axis_temp[2] = matmul_vec(rx, matmul_vec(ry, matmul_vec(rz, self.axis[2])))
-        assembly.rotate(instanceList=(self.name,), axisPoint=[0,0,0],
-        axisDirection=self.axis_temp[2], angle=theta[2]*180/np.pi)
-
-        # for i in range(3):
-        #     self.axis_temp[i] = matmul_vec(rx, matmul_vec(ry, matmul_vec(rz, self.axis[i])))
-        #     assembly.DatumPointByCoordinate(self.axis_temp[i])
-        # if clean_up_geo_test:
-        #     del assembly.features['ax_0']
-        #     del assembly.features['ax_1']
-        #     del assembly.features['ax_2']
-        # assembly.features.changeKey(
-        #     fromName='Datum pt-1', toName='ax_0')
-        # assembly.features.changeKey(
-        #     fromName='Datum pt-2', toName='ax_1')
-        # assembly.features.changeKey(
-        #     fromName='Datum pt-3', toName='ax_2')
-
+from helpers import *
 
 def import_3D_geo_shape(num):
     if clean_up_geo_test:
@@ -125,7 +51,7 @@ def import_3D_geo_shape(num):
                 'NFKD', part_name_list_read[i]).encode('ascii','ignore')
         assembly.deleteFeatures(part_name_list_read)
     #define the geometric shape size and location
-    calcite_dim = [2.4, 2.4, 2.4]
+    calcite_dim = [1.0, 1.0, 1.0]
     pyrite_dim = [0.2, 0.2, 0.2]
 
     global pyrite_part
@@ -145,7 +71,7 @@ def import_3D_geo_shape(num):
 
 def create_3D_distro(num_crystal):
     #copy .\geometry.peter \\ad.monash.edu\home\User045\dche145\Documents\Abaqus\microwave-break-rocks\geometry.peter
-    geo_distro_3D = 'geometry.peter'
+    geo_distro_3D = working_dir + 'geometry.peter'
     with open(geo_distro_3D, 'rb') as f:
         read_out = json.load(f)
         loc = np.array(read_out[0])
@@ -168,25 +94,102 @@ def merge_and_material():
         all_parts.append(pyrite_ins[i].part)
     all_parts.append(calcite_ins[0].part)
 
-    assembly.InstanceFromBooleanMerge(name='merged-1', instances=all_parts,
-        keepIntersections=ON, originalInstances=SUPPRESS, domain=GEOMETRY)
+    #cut so to get rid of external regions
+    instance('calcite-for-cut', script_part=calcite_part)
+    for i in xrange(num_crystal):
+        assembly.InstanceFromBooleanCut(name='pyrite-to-get-rid-'+str(i), 
+            instanceToBeCut=assembly.instances['pyrite-'+str(i)], 
+            cuttingInstances=(assembly.instances['calcite-for-cut'], ), 
+            originalInstances=SUPPRESS)
+        assembly.features['pyrite-'+str(i)].resume()
+        assembly.features['calcite-for-cut'].resume()
+
+    del assembly.features['calcite-for-cut']
+
+    assembly.InstanceFromBooleanMerge(name='merged', instances=all_parts,
+        keepIntersections=ON, originalInstances=DELETE, domain=GEOMETRY)
+
+    assembly.InstanceFromBooleanCut(name='merged', 
+        instanceToBeCut=assembly.instances['merged-1'], 
+        cuttingInstances=(list(assembly.instances['pyrite-to-get-rid-'+ str(i) + '-1'] for i in xrange(num_crystal))), 
+        originalInstances=DELETE)
+
+    for i in xrange(num_crystal):
+        del model.parts['pyrite-to-get-rid-'+str(i)]
+
     with open(part_name_file, 'r') as f:
         part_name_list_read = json.load(f)
         part_name_list_read.append('merged-1')
     with open(part_name_file, 'w') as f:
         json.dump(part_name_list_read, f)
-    merged_part = mdb.models[assem_name].parts['merged-1']
-    calcite_cell = merged_part.cells.findAt(((0, 0, 0),))
-    region = regionToolset.Region(cells = calcite_cell)
 
-    merged_part.SectionAssignment(region=region, sectionName='calcite', offset=0.0,
-        offsetType=MIDDLE_SURFACE, offsetField='',
-        thicknessAssignment=FROM_SECTION)
+    merged_part = model.parts['merged']
+    
+    global a_cells
+    global b_cells
+    for cell in merged_part.cells:
+        if(cell.getSize() > pyrite_ins[0].size):
+            a_cells.append(cell)
+        else:
+            b_cells.append(cell)
+
+    merged_part.SectionAssignment(region=a_cells, sectionName='feldspar', offset=0.0,
+    offsetType=MIDDLE_SURFACE, offsetField='',
+    thicknessAssignment=FROM_SECTION)
+
+    merged_part.SectionAssignment(region=b_cells, sectionName='quartz', offset=0.0,
+    offsetType=MIDDLE_SURFACE, offsetField='',
+    thicknessAssignment=FROM_SECTION)
 
     session.viewports['Viewport: 1'].setValues(displayedObject=assembly)
     session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=ON, bcs=ON,
         predefinedFields=ON, connectors=ON)
     assembly.regenerate()
+    return merged_part
+
+def mesh_it(part):
+    # Assign an element type to the part instance.
+    region = (part.cells,)
+    elemType = mesh.ElemType(elemCode=C3D10MT, elemLibrary=STANDARD)
+    myAssembly.setElementType(regions=region, elemTypes=(elemType,))
+
+    # Seed the part instance.
+
+    myAssembly.seedPartInstance(regions=(part,), size=0.06)
+
+    # Mesh the part instance.
+
+    myAssembly.generateMesh(regions=(part,))
+
+    # Display the meshed beam.
+    if disp_mesh:
+        myViewport.assemblyDisplay.setValues(mesh=ON)
+        myViewport.assemblyDisplay.meshOptions.setValues(meshTechnique=ON)
+        myViewport.setValues(displayedObject=myAssembly)
+        
+def load():
+    # Find the end face using coordinates.
+
+    endFaceCenter = (-100,0,12.5)
+    endFace = myInstance.faces.findAt((endFaceCenter,) )
+
+    # Create a boundary condition that encastres one end
+    # of the beam.
+
+    endRegion = (endFace,)
+    myModel.EncastreBC(name='Fixed',createStepName='beamLoad',
+        region=endRegion)
+
+    # Find the top face using coordinates.
+
+    topFaceCenter = (0,10,12.5)
+    topFace = myInstance.faces.findAt((topFaceCenter,) )
+
+    # Create a pressure load on the top face of the beam.
+
+    topSurface = ((topFace, SIDE1), )
+    myModel.Pressure(name='Pressure', createStepName='beamLoad',
+        region=topSurface, magnitude=0.5)
 
 def run_job(magnitude=10e8, timePeriod=5, increment=0.3):
 #setup different simulation jobs
@@ -260,8 +263,7 @@ def get_output_data(name_job, step, frame, num_intervals, meta_data = None):
 
 if __name__== "__main__":
     # assem_name = 'square-3d-macro-start-origin'
-    assem_name = 'square-3d'
-
+    assem_name = 'square-3d-macro-start-origin'
     model = mdb.models[assem_name]
     assembly = model.rootAssembly
     num_change_flux = 25
@@ -271,23 +273,30 @@ if __name__== "__main__":
     frame = int(np.ceil(timePeriod/increment))
     num_intervals = 150
 
-    step = 1
+    step = 1 
     num_crystal = 10
     new_session = True
     clean_up_geo_test = False
-    # import_3D_geo_shape(num_crystal)
-    # create_3D_distro(num_crystal)
-    # merge_and_material()
 
+    del assembly.features['merged-2']
+    import_3D_geo_shape(num_crystal)
+    create_3D_distro(num_crystal)
+    merged_part = merge_and_material()
+    mesh_it(merged_part)
 
-    for i in xrange(num_change_flux):
-        name_job = run_job(magnitude[i], timePeriod, increment)
-        meta_data = {
-            'name': name_job,
-            'magnitude': magnitude[i],
-        }
-        get_output_data(name_job, step, frame, num_intervals, meta_data)
+    # for i in xrange(num_change_flux):
+    #     name_job = run_job(magnitude[i], timePeriod, increment)
+    #     meta_data = {
+    #         'name': name_job,
+    #         'magnitude': magnitude[i],
+    #     }
+    #     get_output_data(name_job, step, frame, num_intervals, meta_data)
 
-    # How to copy Macro
+    # run on TeamViewer
+    # shutil.copyfile('C:/Users/zivan/abaqusMacros.py', r'C:/peter_abaqus/Summer-Research-Project/macro.py')
+    # execfile('C:/peter_abaqus/Summer-Research-Project/master_macro.py', __main__.__dict__)
+    # os.chdir(r"C:\peter_abaqus\Summer-Research-Project\abaqus_working_space\abaqus_out")
+
+    # Run on Citrix
     # shutil.copyfile('C:/Users/dche145/abaqusMacros.py', r'//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/macro.py')
     # execfile('//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/master_macro.py', __main__.__dict__)
