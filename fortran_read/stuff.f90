@@ -110,7 +110,7 @@ subroutine working
   ! Close the file.
   !
   CALL h5fclose_f(file_id, error)
-
+ 
   !
   ! Close FORTRAN interface.
   !
@@ -214,9 +214,7 @@ subroutine wr_rd_data
   ! Close FORTRAN interface.
   !
   CALL h5close_f(error)
-    end subroutine 
-    
-    
+end subroutine 
 subroutine wr_rd_data_eps
 
   USE HDF5 ! This module contains all necessary modules

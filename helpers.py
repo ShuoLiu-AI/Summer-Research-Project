@@ -1,5 +1,6 @@
 import numpy as np
 from numpy import cos, sin
+from global_var import *
 
 def get_name_job(magnitude):
     name_job = '%.2E' % (magnitude/100)
@@ -42,3 +43,7 @@ def get_rz(theta):
 
 def delete(part_name_list):
     assembly.deleteFeatures(part_name_list)
+
+def show_face(face):
+    point = face.getCentroid()
+    assembly.DatumPointByCoordinate(point[0])

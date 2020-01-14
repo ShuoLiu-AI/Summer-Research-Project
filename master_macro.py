@@ -1,28 +1,6 @@
 # -*- coding: mbcs -*-
 # Do not delete the following import lines
 
-
-from abaqus import *
-from abaqusConstants import *
-import __main__
-import section
-import regionToolset
-import displayGroupMdbToolset as dgm
-import part
-import material
-import assembly
-import step
-import interaction
-import load
-import mesh
-import optimization
-import job
-import sketch
-import visualization
-import xyPlot
-import displayGroupOdbToolset as dgo
-import connectorBehavior
-from decimal import Decimal
 import sys
 import pickle
 import numpy as np
@@ -34,6 +12,7 @@ import unicodedata
 
 # working_dir = r'//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/'
 working_dir = r'C:/peter_abaqus/Summer-Research-Project/'
+
 sys.path.append(working_dir)
 # os.chdir(working_dir)
 import helpers
@@ -125,10 +104,11 @@ def merge_and_material():
 
     merged_part = model.parts['merged']
     
-    global a_cells
-    global b_cells
+
+    a_cells = []
+    b_cells = []
     for cell in merged_part.cells:
-        if(cell.getSize() > pyrite_ins[0].size):
+        if(cell.getSize(printResults=False) > 0.5):
             a_cells.append(cell)
         else:
             b_cells.append(cell)
@@ -162,34 +142,90 @@ def mesh_it(part):
     myAssembly.generateMesh(regions=(part,))
 
     # Display the meshed beam.
+    disp_mesh=False
     if disp_mesh:
         myViewport.assemblyDisplay.setValues(mesh=ON)
         myViewport.assemblyDisplay.meshOptions.setValues(meshTechnique=ON)
         myViewport.setValues(displayedObject=myAssembly)
-        
+
 def load():
-    # Find the end face using coordinates.
+    # # Find the end face using coordinates.
 
-    endFaceCenter = (-100,0,12.5)
-    endFace = myInstance.faces.findAt((endFaceCenter,) )
+    # endFaceCenter = (-100,0,12.5)
+    # endFace = myInstance.faces.findAt((endFaceCenter,) )
 
-    # Create a boundary condition that encastres one end
-    # of the beam.
+    # # Create a boundary condition that encastres one end
+    # # of the beam.
 
-    endRegion = (endFace,)
-    myModel.EncastreBC(name='Fixed',createStepName='beamLoad',
-        region=endRegion)
+    # endRegion = (endFace,)
+    # myModel.EncastreBC(name='Fixed',createStepName='beamLoad',
+    #     region=endRegion)
 
-    # Find the top face using coordinates.
+    # # Find the top face using coordinates.
 
-    topFaceCenter = (0,10,12.5)
-    topFace = myInstance.faces.findAt((topFaceCenter,) )
+    # topFaceCenter = (0,10,12.5)
+    # topFace = myInstance.faces.findAt((topFaceCenter,) )
 
-    # Create a pressure load on the top face of the beam.
+    # # Create a pressure load on the top face of the beam.
 
-    topSurface = ((topFace, SIDE1), )
-    myModel.Pressure(name='Pressure', createStepName='beamLoad',
-        region=topSurface, magnitude=0.5)
+    # topSurface = ((topFace, SIDE1), )
+    # myModel.Pressure(name='Pressure', createStepName='beamLoad',
+    #     region=topSurface, magnitude=0.5)
+
+    cells = assembly.instances['merged-2'].cells
+
+    a_cells = []
+    b_cells = []
+    for cell in cells:
+        if(cell.getSize(printResults=False) > 0.5):
+            a_cells.append(cell)
+        else:
+            b_cells.append(cell)
+
+    model.BodyHeatFlux(name='dflux', 
+        createStepName='heat_up', region=b_cells, magnitude=10.0, 
+        distributionType=USER_DEFINED)
+
+def boundary(type, mag=0):
+    #setting up all the points that the surface is on
+    #setting up 24 points for all the surfaces
+    dim = 0.5
+    offset=0.1
+    points_corner = [
+        [dim - offset, dim - offset,  dim], 
+        [dim - offset, dim, -dim + offset],
+        [dim - offset, -dim, dim - offset],
+        [dim - offset, -dim + offset, -dim],
+        [-dim + offset, dim - offset,  dim], 
+        [-dim + offset, dim, -dim + offset],
+        [-dim + offset, -dim, dim - offset],
+        [-dim + offset, -dim + offset, -dim],
+        [dim, 0, 0],
+        [-dim, 0, 0]
+    ]
+    faces = assembly.instances['merged-2'].faces
+    face_set = set()
+    for i in range(len(points_corner)):
+        face_set.add(faces.findAt(points_corner[i]).index)
+
+    copy_set = set(face_set)
+    for i in face_set:
+        adj = faces[i].getAdjacentFaces()
+        for adj_face in adj:
+            if adj_face.getNormal() == faces[i].getNormal():
+                copy_set.add(adj_face.index)
+                
+    face_set=copy_set
+    outer_face = []
+    for i in face_set:
+        outer_face.append(faces[i])
+
+    if type is 'encastre':
+        model.EncastreBC(name='fixed', createStepName='Initial', region = outer_face)
+    elif type is 'symmetry':
+        model.XsymmBC(name='xsym', createStepName='Initial', region=outer_face, localCsys=None)
+    elif type is 'pressure':
+        model.Pressure(name='pressure', createStepName='Initial', region = outer_face,         magnitude = mag)
 
 def run_job(magnitude=10e8, timePeriod=5, increment=0.3):
 #setup different simulation jobs
@@ -262,28 +298,14 @@ def get_output_data(name_job, step, frame, num_intervals, meta_data = None):
 
 
 if __name__== "__main__":
-    # assem_name = 'square-3d-macro-start-origin'
-    assem_name = 'square-3d-macro-start-origin'
-    model = mdb.models[assem_name]
-    assembly = model.rootAssembly
-    num_change_flux = 25
-    magnitude = np.linspace(10, 500, num_change_flux)
-    timePeriod=50.0
-    increment=0.5
-    frame = int(np.ceil(timePeriod/increment))
-    num_intervals = 150
+    # del assembly.features['merged-2']
+    # import_3D_geo_shape(num_crystal)
+    # create_3D_distro(num_crystal)
+    # merged_part = merge_and_material()
+    # mesh_it(merged_part)
 
-    step = 1 
-    num_crystal = 10
-    new_session = True
-    clean_up_geo_test = False
-
-    del assembly.features['merged-2']
-    import_3D_geo_shape(num_crystal)
-    create_3D_distro(num_crystal)
-    merged_part = merge_and_material()
-    mesh_it(merged_part)
-
+    # boundary('encastre')
+    load()
     # for i in xrange(num_change_flux):
     #     name_job = run_job(magnitude[i], timePeriod, increment)
     #     meta_data = {

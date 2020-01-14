@@ -1,4 +1,29 @@
-from helpers import *
+from abaqus import *
+from abaqusConstants import *
+import __main__
+import section
+import regionToolset
+import displayGroupMdbToolset as dgm
+import part
+import material
+import assembly
+import step
+import interaction
+import load
+import mesh
+import optimization
+import job
+import sketch
+import visualization
+import xyPlot
+import displayGroupOdbToolset as dgo
+import connectorBehavior
+from decimal import Decimal
+
+import numpy as np
+
+# working_dir = r'//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/'
+working_dir = r'C:/peter_abaqus/Summer-Research-Project/'
 
 pyrite_part = None
 calcite_part = None
@@ -9,7 +34,22 @@ geo_distro_3D = working_dir + 'geometry.peter'
 part_name_list = []
 a_cells = []
 b_cells = []
-disp_mesh = False
+
+assem_name = 'square-3d-macro-start-origin'
+model = mdb.models[assem_name]
+assembly = model.rootAssembly
+num_change_flux = 25
+magnitude = np.linspace(10, 500, num_change_flux)
+timePeriod=50.0
+increment=0.5
+frame = int(np.ceil(timePeriod/increment))
+num_intervals = 150
+
+step = 1 
+num_crystal = 10
+new_session = True
+clean_up_geo_test = False
+from helpers import *
 
 class part:
     def __init__(self, name, dim=[0.5, 0.5, 0.5], center=[0, 0, 0], shape='cube', b_create_part=False, assembly=assembly):
