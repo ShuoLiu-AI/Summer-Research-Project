@@ -42,20 +42,21 @@ import mat_prop
 reload(mat_prop)
 from mat_prop import *
 
-assem_name = 'square-3d-macro-start-origin'
-model = mdb.models[assem_name]
-assembly = model.rootAssembly
-
-mat_feld = model.Material(name=feldspar_prop['name'])
-# mat_feld_wo = model.Material(name=quartz_prop['name'])
-mat_quartz = model.Material(name=quartz_prop['name'])
-# mat_quartz_wo = model.Material(name=mat_quartz_name_wo)
+import global_var 
+reload(global_var)
+from global_var import *
 
 
 
-def create_material():
-    assign_prop(mat_feld, feldspar_prop, True)
-    assign_prop(mat_quartz, quartz_prop, True)
+
+def create_material_section():
+    mat_feld = model.Material(name=feldspar_prop['name'])
+    # mat_feld_wo = model.Material(name=quartz_prop['name'])
+    mat_quartz = model.Material(name=quartz_prop['name'])
+    # mat_quartz_wo = model.Material(name=mat_quartz_name_wo)
+
+    assign_prop(mat_feld, feldspar_prop, False)
+    assign_prop(mat_quartz, quartz_prop, False)
 
     #creating the sections
     model.HomogeneousSolidSection(

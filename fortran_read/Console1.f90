@@ -1,4 +1,6 @@
 program main
-    call wr_rd_data
+    !call write_conv1
+    call testrand
+    
     
 end program main

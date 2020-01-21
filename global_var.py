@@ -29,13 +29,19 @@ pyrite_part = None
 calcite_part = None
 pyrite_ins = []
 calcite_ins = []
+
+part_pyrite_ins = []
+part_calcite_ins = []
+assem_pyrite_ins = []
+assem_calcite_ins = []
+
 part_name_file = working_dir + 'part_names.peter'
 geo_distro_3D = working_dir + 'geometry.peter'
 part_name_list = []
 a_cells = []
 b_cells = []
 
-assem_name = 'square-3d-macro-start-origin'
+assem_name = 'test_construction'
 model = mdb.models[assem_name]
 assembly = model.rootAssembly
 num_change_flux = 25
@@ -46,7 +52,14 @@ frame = int(np.ceil(timePeriod/increment))
 num_intervals = 150
 
 step = 1 
-num_crystal = 10
+num_crystal = 0
+a_size = [0.0, 0.0, 0.0]
+b_size = [0.0, 0.0, 0.0]
+theta_x = []
+theta_y = []
+theta_z = []
+loc = []
+
 new_session = True
 clean_up_geo_test = False
 from helpers import *
