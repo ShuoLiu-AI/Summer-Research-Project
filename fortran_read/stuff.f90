@@ -41,19 +41,19 @@ subroutine testrand
       end do
     END DO
     
-    max = maxval(bin)
-    shrinkratio = ceiling(real(max)/consolelen)
+    !max = maxval(bin)
+    !shrinkratio = ceiling(real(max)/consolelen)
+    !
+    !print*, shrinkratio
+    !print*, bin
+    !   
     
-    print*, shrinkratio
-    print*, bin
-       
-    
-    do i = 1, numbin
-        do j = 1, bin(i)
-            write(*,fmt="(A)", advance='no') '*'
-        end do
-        write(*,*)
-    end do
+    !do i = 1, numbin
+    !    do j = 1, bin(i)
+    !        write(*,fmt="(A)", advance='no') '*'
+    !    end do
+    !    write(*,*)
+    !end do
     
     !print*, 'array'
     !print *, z
@@ -206,7 +206,7 @@ subroutine write10
         end do
     end do
     
-      open (unit=1,  file='out5.peter', form='unformatted',  access='direct', recl=m*n*2)
+      open (unit=1,  file='C:\peter_abaqus\Summer-Research-Project\abaqus_working_space\abaqus_out\test_geo1.peter', form='unformatted',  access='direct', recl=m*n*2)
 
 
     write (1, rec=1) x
@@ -220,16 +220,16 @@ end subroutine
 subroutine read10
 
       integer m,n
-      parameter (m=8, n=4)
+      parameter (m=3, n=3)
       double precision x(m, n)
     
-      open (unit=2,  file='out5.peter', form='unformatted',  access='direct', recl=m*n*2)
+      open (unit=2,  file='C:\peter_abaqus\Summer-Research-Project\abaqus_working_space\abaqus_out\test.geo' , form='unformatted',  access='direct', recl=m*n*2)
 
 
-    read (2, rec=2) x
+    read (2, rec=1) x
     close(2)
     print*, 'read'
-    do i = 1,8
+    do i = 1,m
         print*, x(i, :)
     end do
 
