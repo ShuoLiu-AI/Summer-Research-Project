@@ -1,6 +1,6 @@
 program main
-    !call write_conv1
-    call testrand
+    call read10
+    !call read10
     
     
 end program main

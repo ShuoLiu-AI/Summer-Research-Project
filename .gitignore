@@ -72,3 +72,5 @@ abaqus_working_space/thermal_prac_1.jnl
 fortran_read/out_small.peter
 working_with_meep/tesselation_out.h5
 working_with_meep/eps-000000000.h5
+*.bin
+*.h5
