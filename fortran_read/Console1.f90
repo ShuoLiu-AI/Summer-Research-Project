@@ -1,4 +1,4 @@
 program main
-    call wr_rd_data
+    call working
     
 end program main
