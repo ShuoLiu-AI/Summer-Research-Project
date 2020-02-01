@@ -10,7 +10,7 @@ import shutil
 import unicodedata
 
 # working_dir = r'//ad.monash.edu/home/User045/dche145/Documents/Abaqus/microwave-break-rocks/'
-working_dir = r'C:/peter_abaqus/Summer-Research-Project/'
+working_dir = r'C:/peter_abaqus/Summer-Research-Project/abaqus_macro/'
 
 sys.path.append(working_dir)
 # os.chdir(working_dir)
@@ -22,9 +22,34 @@ import global_var
 reload(global_var)
 from global_var import *
 
-import create_material 
-reload(create_material)
-from create_material import *
+import mat_prop
+reload(mat_prop)
+from mat_prop import *
+
+
+def create_material_section():
+    mat_feld = model.Material(name=feldspar_prop['name'])
+    # mat_feld_wo = model.Material(name=quartz_prop['name'])
+    mat_quartz = model.Material(name=quartz_prop['name'])
+    # mat_quartz_wo = model.Material(name=mat_quartz_name_wo)
+
+    assign_prop(mat_feld, feldspar_prop, False)
+    assign_prop(mat_quartz, quartz_prop, False)
+
+    #creating the sections
+    model.HomogeneousSolidSection(
+        name=feldspar_prop['name'], material=feldspar_prop['name'],
+        thickness=None)
+    model.HomogeneousSolidSection(
+        name=quartz_prop['name'], material=quartz_prop['name'],
+        thickness=None)
+
+    # model.HomogeneousSolidSection(
+    #     name=mat_quartz_name_wo, material=mat_quartz_name_wo,
+    #     thickness=None)
+    # model.HomogeneousSolidSection(
+    #     name=mat_quartz_name_w, material=mat_quartz_name_w,
+    #     thickness=None)
 
 def import_geo_info():
     global num_crystal
@@ -321,14 +346,14 @@ def get_output_data(name_job, step, frame, num_intervals, meta_data = None):
 
 if __name__== "__main__": 
     try:
-        import_geo_info()
+        # import_geo_info()
         create_material_section()
-        import_3D_geo_shape()
-        create_3D_distro()
-        merge_and_material()
-        mesh_it()
-        boundary('encastre')
-        load()
+        # import_3D_geo_shape()
+        # create_3D_distro()
+        # merge_and_material()
+        # mesh_it()
+        # boundary('encastre')
+        # load()
     except Exception as inst:
         print type(inst)     # the exception instance
         print inst.args
@@ -343,10 +368,10 @@ if __name__== "__main__":
     #     get_output_data(name_job, step, frame, num_intervals, meta_data)
 
     # run on TeamViewer
-    # shutil.copyfile('C:/Users/zivan/abaqusMacros.py', r'C:/peter_abaqus/Summer-Research-Project/macro.py')
+    # shutil.copyfile('C:/Users/zivan/abaqusMacros.py', r'C:/peter_abaqus/Summer-Research-Project/abaqus_macro/macro.py')
     # shutil.copyfile('C:/temp/dflux.inp', r'C:/peter_abaqus/Summer-Research-Project/abaqus_working_space/abaqus_out/dflux.inp')
     # shutil.copyfile('C:/temp/umat_test.inp', r'C:/peter_abaqus/Summer-Research-Project/abaqus_working_space/abaqus_out/umat_test.inp')
-    # execfile('C:/peter_abaqus/Summer-Research-Project/main.py', __main__.__dict__)
+    # execfile('C:/peter_abaqus/Summer-Research-Project/abaqus_macro/main.py', __main__.__dict__)
     # os.chdir(r"C:\peter_abaqus\Summer-Research-Project\abaqus_working_space\abaqus_out")
 
     # Run on Citrix

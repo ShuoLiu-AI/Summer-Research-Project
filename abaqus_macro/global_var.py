@@ -41,8 +41,11 @@ part_name_list = []
 a_cells = []
 b_cells = []
 
-assem_name = 'test_construction'
+assem_name = 'incorp-mat-heat'
+
 model = mdb.models[assem_name]
+print('in global var file')
+print(model.name)
 assembly = model.rootAssembly
 num_change_flux = 25
 magnitude = np.linspace(10, 500, num_change_flux)
@@ -117,7 +120,6 @@ class instance:
         ry = get_ry(theta[1])
         rz = get_rz(theta[2])
         self.axis_temp = [[0,0,1] for i in range(3)]
-
         assembly.rotate(instanceList=(self.name,), axisPoint=[0,0,0],
         axisDirection=self.axis[0], angle=theta[0]*180/np.pi)
         self.axis_temp[1] = matmul_vec(rx, matmul_vec(ry, self.axis[1]))
