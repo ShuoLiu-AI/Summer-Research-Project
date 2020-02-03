@@ -8,6 +8,11 @@ import json
 from scipy.spatial import Voronoi, voronoi_plot_2d
 import matplotlib.pyplot as plt
 import time
+from scipy.spatial import ConvexHull
+from mpl_toolkits.mplot3d import Axes3D # <--- This is important for 3d plotting 
+
+from gen_geo import bounded_voronoi
+from gen_geo import convex_hull
 
 def closest_node(node, nodes):
     # nodes = np.asarray(nodes)
@@ -46,24 +51,23 @@ def write_windows(arr, file_name):
 
 
 class voronoi_geo:
-    num_seed = 1000
-    points = np.zeros((num_seed, 3))
+    num_mat = 2
+    eps_mat = [1, 10]
 
-    num_parts = 2
-    eps_val = [1, 10]
-
-    # vor = Voronoi(points)
-
-    # assigning points and seeds
-
-    def __init__(self, seed = 15):
-        self.random_ass(seed)
+    def __init__(self, num_seeds, rand_seed = 15):
+        self.num_seeds = num_seeds
+        self.random_ass(rand_seed)
+        self.points = np.zeros((self.num_seeds, 3))
+        self.random_ass(rand_seed)
+        self.vor = Voronoi(self.points)
+        self.vertices = self.vor.vertices
+        
 
     def random_ass(self, seed):
         np.random.seed(seed)
-        self.points = np.random.rand(self.num_seed, 3) - 0.5
-        self.parts_ass = np.random.randint(0, self.num_parts, (self.num_seed))
-        self.parts_eps = [self.eps_val[self.parts_ass[i]] for i in range(self.num_seed)]
+        self.points = np.random.rand(self.num_seeds, 3) - 0.5
+        self.parts_ass = np.random.randint(0, self.num_mat, (self.num_seeds))
+        self.parts_eps = [self.eps_mat[self.parts_ass[i]] for i in range(self.num_seeds)]
 
 class checker_geo:
     num_div = 10
@@ -88,8 +92,6 @@ class checker_geo:
         self.parts_ass = np.array([1 if i%2 else 0 for i in range(self.num_seed)])
         self.parts_eps = [self.eps_val[self.parts_ass[i]] for i in range(self.num_seed)]
 
-my_voronoi_geo = voronoi_geo(15)
-my_checker_geo = checker_geo()
 
 def gen_part_size(num_crystal, size_crystal_base, weibull = True):
     a = 5. # shape of weibull distribution
@@ -224,11 +226,33 @@ def get_sim_output(f_name, sim, length_t=20, out_every=0.6, get_3_field = False)
 
     print(one_cube_3d.shape)
 
+
 size_cell = [1.5, 1.5, 1.5]
 size_solid = [1, 1, 1]
 size_crystal_base = [0.1, 0.1, 0.1]
 num_crystal = 200
 np.random.seed(15)
+
+n_towers = 20
+towers = np.random.rand(n_towers, 3)
+
+bounding_box = np.array([0., 1., 0., 1., 0., 1.]) # [x_min, x_max, y_min, y_max]
+vor = bounded_voronoi.voronoi(towers, bounding_box)
+
+points = []
+hull = []
+
+for i in range(len(vor.regions)):
+    points.append(vor.vertices[vor.regions[i]])
+    
+
+hull = convex_hull.get_conv_hull(points, 'polygon1.csv', 'polygon1-hull.csv')
+# convex_hull.plot_hull(points, hull)
+print('created ' + str(len(vor.regions)) + ' polygons')
+
+my_voronoi_geo = voronoi_geo(100, 15)
+my_checker_geo = checker_geo()
+
 
 param_geo_file_name = '../abaqus_working_space/abaqus_out/geometry.bin'
 num_geo_file_name = '../abaqus_working_space/abaqus_out/voronoi.bin'
@@ -238,45 +262,29 @@ pml_layers = [mp.PML(0.3)]
 solid_region = mp.Block(size_solid, 
                     center = mp.Vector3(0, 0, 0),
                     material=mp.Medium(epsilon=10))
-geometry = [solid_region,]
+geometry = [solid_region, ]
 
 source_pad = 0.25
 source = [mp.Source(mp.ContinuousSource(wavelength=2*(11**0.5), width=20),
                    component= mp.Ez,
                    center=mp.Vector3(0.55, 0, 0),
                    size=mp.Vector3(0, 0.1, 0.1))]
-use_func = True
 
+sim = mp.Simulation(resolution=int(50),
+        cell_size=size_cell,
+        boundary_layers=pml_layers,
+        sources = source,
+        epsilon_func = my_eps)
+        
 
-sim_res_x_epsfun = []
+# gen_polygon_data()
+#get_sim_output('tess_res_50_no_para.bin', sim, length_t = 20, out_every=0.6, get_3_field=False)
 
-res = np.array([30, 50, 60, 65, 70, 75], dtype=int)
-elapsed_time = []
-
-for i in range(len(res)):
-    sim_res_x_epsfun.append(
-        mp.Simulation(resolution=int(res[i]),
-                cell_size=size_cell,
-                boundary_layers=pml_layers,
-                sources = source,
-                epsilon_func = my_eps)
-                )
-    start_time = time.time()
-    get_sim_output('tess_res_50_no_para.bin', sim_res_x_epsfun[i], length_t = 20, out_every=0.6, get_3_field=False)
-    elapsed_time.append(time.time() - start_time)
-print(elapsed_time)
-# plt.plot(res**3, np.array(elapsed_time))
-
-num_cells_vs_time = np.concatenate((np.expand_dims(res**3, axis=0), np.expand_dims(np.array(elapsed_time), axis=0)))
-write_windows(num_cells_vs_time, 'parallel performance.log')
-
-sim_res_50_geo = mp.Simulation(resolution=50,
-                cell_size=size_cell,
-                boundary_layers=pml_layers,
-                sources = source,
-                geometry=geometry)
+# sim_res_50_geo = mp.Simulation(resolution=50,
+#                 cell_size=size_cell,
+#                 boundary_layers=pml_layers,
+#                 sources = source,
+#                 geometry=geometry)
 # vis(sim)
 
 # out_num_geo('checker_geo.bin', my_checker_geo, range_geo=[1.0,1.0,1.0], range_index=[100,100,100])
-
-

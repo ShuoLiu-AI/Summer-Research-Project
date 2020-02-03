@@ -15,24 +15,6 @@ imshow(rescale(squeeze(a(1,:,:))))
 
 
 %% importing the files
-fid = fopen('C:\peter_abaqus\Summer-Research-Project\parallel performance.log','r');
-a = fread(fid,'double','ieee-le');
-space_dim = [2, 6]; 
-parallel = reshape(a, space_dim(1), space_dim(2));
-fclose(fid);
-
-fid = fopen('C:\peter_abaqus\Summer-Research-Project\working_with_meep\serial performance.log','r');
-a = fread(fid,'double','ieee-le');
-space_dim = [2, 6]; 
-serial = reshape(a, space_dim(1), space_dim(2));
-fclose(fid);
-plot(parallel(1,:), parallel(2,:))
-hold on
-plot(serial(1,:), serial(2,:))
-
-figure()
-plot(serial(1,:), serial(2,:)./parallel(2,:))
-%% importing the files
 fid = fopen('C:\peter_abaqus\Summer-Research-Project\working_with_meep\tese_res_50.bin','r');
 whole_field = fread(fid,'double','ieee-le');
 fclose(fid);
