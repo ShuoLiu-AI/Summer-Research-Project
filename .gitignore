@@ -71,3 +71,4 @@ abaqus_working_space/thermal_prac_1.jnl
 fortran_read/out_small.peter
 *.bin
 *.h5
+*.meta

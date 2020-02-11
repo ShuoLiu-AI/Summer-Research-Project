@@ -98,4 +98,4 @@ for i in range(len(data)):
 	f = p.faces
 	p.AddCells(faceList = f)
 
-# execfile('C:/peter_abaqus/Summer-Research-Project/abaqus_macro/create_polygon.py', __main__.__dict__)
+# execfile('C:/peter_abaqus/Summer-Research-Project/abaqus_macro/abq_create_polygon.py', __main__.__dict__)

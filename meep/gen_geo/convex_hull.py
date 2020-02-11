@@ -15,9 +15,6 @@ def plot_hull(points, hull):
 
         ax.plot(points.T[0], points.T[1], points.T[2], "ko") 
 
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
     else:
         for i in range(len(points)):
             for s in hull[i].simplices:
@@ -26,9 +23,9 @@ def plot_hull(points, hull):
 
             ax.plot(points[i].T[0], points[i].T[1], points[i].T[2], "ko") 
 
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
     plt.show()
 
 
