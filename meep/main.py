@@ -3,6 +3,7 @@ import sys
 
 np.random.seed(15)
 
+
 def b_voronoi(n_towers = 20):
     towers = np.random.rand(n_towers, 3)
 
@@ -17,7 +18,7 @@ def b_voronoi(n_towers = 20):
 
     hull = convex_hull.get_conv_hull(points, 'polygon1.csv', 'polygon1-hull.csv')
 
-    convex_hull.plot_hull(vor.vertices, hull)
+    convex_hull.plot_hull(points, hull, plotIndex=[3])
     # convex_hull.plot_hull(points, hull)
     print('created ' + str(len(vor.regions)) + ' polygons')
 
@@ -64,7 +65,7 @@ def create_sim():
     return sim_diff_dist
 
 
-b_voronoi(20)
+b_voronoi(30)
 
 # get_sim_output(str(sys.argv[2]), create_sim(), length_t = 40, out_every=0.6, get_3_field=False)
 # out_num_geo('checker_geo.bin', my_checker_geo, range_geo=[1.0,1.0,1.0], range_index=[100,100,100])

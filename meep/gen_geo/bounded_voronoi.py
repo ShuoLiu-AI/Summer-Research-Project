@@ -63,6 +63,27 @@ def voronoi(towers, bounding_box):
                     break
         if region != [] and flag:
             regions.append(region)
+    
+    indexToDel = set()
+    for i in range(len(vor.vertices)):
+        for j in range(i):
+            dist = np.linalg.norm(vor.vertices[i] - vor.vertices[j])
+            if dist < 0.005:
+                indexToDel.add(i)
+                indexToDel.add(j)
+    indexToDel = np.sort(np.array(list(indexToDel)))
+    # print(indexToDel)
+
+    for i in range(len(indexToDel)):
+        
+        index = indexToDel[len(indexToDel) - i -1]
+        vor.vertices  = np.delete(vor.vertices, index, 0)
+        for i, r in enumerate(vor.regions):
+            r = np.array(r)
+            not_delete = np.logical_not(r == index)
+            vor.regions[i] = r[not_delete]
+    
+
     vor.filtered_points = points_center
     vor.regions = regions
     return vor

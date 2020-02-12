@@ -4,7 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D # <--- This is important for 3d plotting
 from scipy.spatial import ConvexHull, convex_hull_plot_2d
 import pickle
 
-def plot_hull(points, hull):
+def plot_hull(points, hull, plotIndex=None):
     
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -16,7 +16,12 @@ def plot_hull(points, hull):
         ax.plot(points.T[0], points.T[1], points.T[2], "ko") 
 
     else:
-        for i in range(len(points)):
+        if(plotIndex == None):
+            ran = range(len(points))
+        else:
+            ran = plotIndex
+        for i in ran:
+            points[i] = np.array(points[i])
             for s in hull[i].simplices:
                 s = np.append(s, s[0])  # Here we cycle back to the first coordinate
                 ax.plot(points[i][s, 0], points[i][s, 1], points[i][s, 2], "r-")
